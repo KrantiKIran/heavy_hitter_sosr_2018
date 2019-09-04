@@ -6,20 +6,23 @@ from ryu.lib.mac import haddr_to_bin
 from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import ether_types
-#from ryu.app import simple_switch_13
-import simple_switch_13_timeout
 from ryu.controller import ofp_event
 from ryu.controller.handler import MAIN_DISPATCHER, DEAD_DISPATCHER
 from ryu.controller.handler import set_ev_cls
+from ryu.controller.controller import Datapath as dpth
 from ryu.lib import hub
+import simple_switch_13_timeout
+
 from xmlrpc.server import SimpleXMLRPCServer
 from xmlrpc.client import Binary
+
 import datetime
 import ryu.lib.ofctl_v1_3 as ofctl
-from ryu.controller.controller import Datapath as dpth
 import requests
 import os,sys, json
 import hashlib
+import time
+
 from config import Config
 
 #alpha = 0.5
@@ -38,7 +41,7 @@ class HeavyHitterDetect(simple_switch_13_timeout.SimpleSwitch13):
 
         # running the XMLRPC in background
         server = SimpleXMLRPCServer(('0.0.0.0', 9009),
-                                logRequests=True,
+                                logRequests=False,
                                 allow_none=True)
 
         server.register_introspection_functions()
@@ -98,14 +101,14 @@ class HeavyHitterDetect(simple_switch_13_timeout.SimpleSwitch13):
                     pass
 
             frac = num/den
-            print(frac)
+            #print(frac)
 
             try:
                 t = int(frac * (self.config_obj.global_threshold - total) + int(key_stats[j][key]))
             except:
                 t = int(frac * (self.config_obj.global_threshold - total))
 
-            print("T: "+str(t))
+            #print("T: "+str(t))
 
             self.config_obj.update_threshold_values(i, key, str(t))
 
@@ -118,12 +121,15 @@ class HeavyHitterDetect(simple_switch_13_timeout.SimpleSwitch13):
         #Maintains the list of heavy hitter keys
         hh_keys = []
         #Data in the format: k1-v1,k2-v2,...,kN-vN,
-        print("Config dictionary: "+str(self.config_obj.threshold_dict))
+        #print("Config dictionary: "+str(self.config_obj.threshold_dict))
         arr = data.split(",")
-        print("Arr: "+str(arr))
+        #print("Arr: "+str(arr))
 
         # calculating estimated sum of packet count for a key
-        print(data)
+        #print(data)
+
+        true_hh = {}
+
         for item in arr:
 
             # item = each key and count pair
@@ -134,13 +140,13 @@ class HeavyHitterDetect(simple_switch_13_timeout.SimpleSwitch13):
                 # so now we are splitting the string
 
                 key = item.split("-")[0]
-                print("Key: "+key)
+                #print("Key: "+key)
 
                 # this is a local call
                 # fetching threshold for the given key
                 threshold = eval(self.config_obj.fetch_config_stats(dpid, key))
 
-                print("Threshold values for switch "+dpid+" :"+str(threshold))
+                #print("Threshold values for switch "+dpid+" :"+str(threshold))
                 self.GLOBAL_THRESHOLD = threshold[0]
                 self.LOCAL_THRESHOLD = threshold[1]
                 '''
@@ -149,7 +155,7 @@ class HeavyHitterDetect(simple_switch_13_timeout.SimpleSwitch13):
                 '''
 
                 value = item.split("-")[1]
-                print("Value: "+value)
+                #print("Value: "+value)
 
                 # storing the packet count for a key
                 # at a particular switch
@@ -169,8 +175,8 @@ class HeavyHitterDetect(simple_switch_13_timeout.SimpleSwitch13):
                         stats[k] = {key : str(self.LOCAL_THRESHOLD - 1)}
                         estimate[key] += int(stats[k][key])
 
-        print("Stats: "+str(stats))
-        print("Estimate: "+str(estimate))
+        #print("Stats: "+str(stats))
+        #print("Estimate: "+str(estimate))
 
         '''
         An example of statistics printed out for switch s1:
@@ -198,7 +204,7 @@ class HeavyHitterDetect(simple_switch_13_timeout.SimpleSwitch13):
                 estimate[k] = self._estimate_calc(self.key_stats, k)
                 #Final estimate check after polling
                 if estimate[k] > self.GLOBAL_THRESHOLD:
-                    print("The valuse of k is "+ str(k))
+                    #print("The values of k is "+ str(k))
                     hh_keys.append(k)
         '''
         for k in hh_keys:
@@ -214,6 +220,10 @@ class HeavyHitterDetect(simple_switch_13_timeout.SimpleSwitch13):
             for hh_key in hh_keys:
                 if hh_key in self.mac_key_stats[k]:
                     print("True heavy hitter: "+k+ " : "+hh_key)
+
+                    hh_dict = {'hh_hash':hh_key, 'time':(int)(time.time())}
+                    snc_ip = "http://10.5.20.124:8989/send_heavy_hitter_data"
+                    requests.post(snc_ip, data = hh_dict)
 
         return str(hh_keys)
 
