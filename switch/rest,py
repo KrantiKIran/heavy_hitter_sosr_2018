@@ -1,0 +1,15 @@
+
+from bottle import Bottle, request, response
+
+class HHServe(Bottle):
+    def __init__(self):
+        super(HHServe, slef).__init__()
+        self.route('/getFlow/<switch_name>', method = 'GET', self.getFlowDict)
+
+    def getFlowDict(self, switch_name):
+        # f = open(switch_name, 'r')
+        # flowDump = f.read()
+        print(switch_name)
+        return None
+
+HHServe().run(host='0.0.0.0', port = 9777)

@@ -62,10 +62,19 @@ class HeavyHitterDetect(simple_switch_13_timeout.SimpleSwitch13):
         # normal threading does not work here
         self.new_thread = hub.spawn(server.serve_forever)
 
-    def _estimate_calc(self, dic, k):
+    def self.update_key_stats(self):
+        session = requests.Session()
+        session.trust_env = False
+        for dpid in self.datapaths:
+            URL = "http://10.5.20.234:9777/getFlow/s%s"%(dpid)
+            r = session.get(URL)
+
+    def _estimate_calc(self, k):
         # this data is fetched continuously
         # in the background by _update_poll_stats
-
+        print("")
+        print("Self Datapaths :" + str(self.datapaths) )
+        dic = self.update_key_stats()
         result = 0
         for dpid in dic.keys():
             try:
@@ -201,7 +210,7 @@ class HeavyHitterDetect(simple_switch_13_timeout.SimpleSwitch13):
             # then the actual packet count is fetched
             # and the current packet count is calculated
             if estimate[k] > self.GLOBAL_THRESHOLD:
-                estimate[k] = self._estimate_calc(self.key_stats, k)
+                estimate[k] = self._estimate_calc(k)
                 #Final estimate check after polling
                 if estimate[k] > self.GLOBAL_THRESHOLD:
                     #print("The values of k is "+ str(k))
