@@ -20,7 +20,7 @@ Our work has been tested using [mininet](http://mininet.org/) SDN emulator and t
         cd controller
         ryu-manager hh_app rest_topology
 For RYU installation, you may use pip
-        pip install ryu
+    pip install ryu
 or by source
-        git clone git://github.com/osrg/ryu.git
-        cd ryu; python ./setup.py install
+    git clone git://github.com/osrg/ryu.git
+    cd ryu; python ./setup.py install
